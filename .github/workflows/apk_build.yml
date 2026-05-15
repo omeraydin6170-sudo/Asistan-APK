@@ -27,14 +27,13 @@ jobs:
       - name: Sistem Paketleri
         run: sudo apt-get install -y libtool autoconf automake pkg-config zlib1g-dev libffi-dev libssl-dev build-essential
 
-      - name: Eski Önbelleği Temizle ve APK Pişir
+      - name: APK'yı Pişir (Debug)
         run: |
           export ANDROID_NDK=""
           export ANDROID_NDK_HOME=""
           export ANDROID_NDK_ROOT=""
           export ANDROID_NDK_LATEST_HOME=""
-          # Önce eski tüm hatalı kalıntıları temizlemeye zorluyoruz
-          buildozer android clean
+          # Temizlik komutunu sildik, doğrudan güvenli derlemeyi başlatıyoruz:
           yes | buildozer android debug
         
       - name: APK'yı Teslim Et
