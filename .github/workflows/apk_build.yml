@@ -12,9 +12,8 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: GitHub Android Kalıntılarını Tamamen Kör Et
+      - name: GitHub Android Kalıntılarını Temizle
         run: |
-          # Sunucunun derleme motorunu bozan tüm değişkenleri tamamen temizliyoruz
           unset ANDROID_NDK
           unset ANDROID_NDK_HOME
           unset ANDROID_NDK_ROOT
@@ -28,13 +27,14 @@ jobs:
       - name: Sistem Paketleri
         run: sudo apt-get install -y libtool autoconf automake pkg-config zlib1g-dev libffi-dev libssl-dev build-essential
 
-      - name: APK'yı Pişir (Debug)
+      - name: Eski Önbelleği Temizle ve APK Pişir
         run: |
-          # Derleme esnasında sistemdeki hiçbir harici NDK yoluna bakmaması için hepsini boşaltıyoruz
           export ANDROID_NDK=""
           export ANDROID_NDK_HOME=""
           export ANDROID_NDK_ROOT=""
           export ANDROID_NDK_LATEST_HOME=""
+          # Önce eski tüm hatalı kalıntıları temizlemeye zorluyoruz
+          buildozer android clean
           yes | buildozer android debug
         
       - name: APK'yı Teslim Et
