@@ -12,6 +12,14 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: GitHub Çakışan NDK Ayarlarını Temizle
+        run: |
+          # Sunucunun kendi kafasına göre atadığı NDK yollarını sıfırlıyoruz
+          unset ANDROID_NDK
+          unset ANDROID_NDK_HOME
+          unset ANDROID_NDK_ROOT
+          unset ANDROID_NDK_LATEST_HOME
+
       - name: Buildozer Kurulumu
         run: |
           pip install --upgrade pip
@@ -22,6 +30,10 @@ jobs:
 
       - name: APK'yı Pişir (Debug)
         run: |
+          # Çakışan sistem değişkenlerini derleme anında da eziyoruz
+          export ANDROID_NDK=""
+          export ANDROID_NDK_HOME=""
+          export ANDROID_NDK_ROOT=""
           yes | buildozer android debug
         
       - name: APK'yı Teslim Et
