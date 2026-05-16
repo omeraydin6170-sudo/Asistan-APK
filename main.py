@@ -9,7 +9,6 @@ from jnius import autoclass
 import requests
 import threading
 
-# Android yerel Ses ve Konuşma sınıflarını çağırıyoruz
 try:
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
     Context = autoclass('android.content.Context')
@@ -19,20 +18,19 @@ try:
     TextToSpeech = autoclass('android.speech.tts.TextToSpeech')
     Locale = autoclass('java.util.Locale')
 except Exception as e:
-    print("Android sınıfları sadece telefonda yüklenebilir:", e)
+    print("Android sınıfları yüklenemedi:", e)
 
 class AsistanApp(App):
     def build(self):
         self.tts = None
-        self.api_key = "AIzaSyDr2D-QSQtDwcaCmzcyC5El5yucqqCOZGQ" # <--- KENDİ GEMINI KEY'İNİ BURAYA YAPIŞTIR
+        # OpenAI'dan aldığın "sk-..." ile başlayan anahtarı BURAYA yapıştır
+        self.api_key = "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" 
         
-        # Ana Dikey Arayüz
         main_layout = BoxLayout(orientation='vertical', padding=15, spacing=15)
         
-        # 1. Cevap Alanı (Kaydırılabilir Uzun Metinler İçin)
         scroll = ScrollView(size_hint=(1, 0.5))
         self.label = Label(
-            text="Poco C65 Jarvis Asistan Hazır!\nİster yazın, ister mikrofon butonuna basıp konuşun.",
+            text="Poco C65 Jarvis (ChatGPT) Hazır!\nYazın veya mikrofon butonuna basıp konuşun.",
             font_size='16sp', halign='center', valign='middle', size_hint_y=None
         )
         self.label.bind(size=lambda s, w: setattr(self.label, 'text_size', (w[0] - 20, None)))
@@ -40,14 +38,12 @@ class AsistanApp(App):
         scroll.add_widget(self.label)
         main_layout.add_widget(scroll)
         
-        # 2. Yazarak İletişim İçin Girdi Kutusu
         self.input_box = TextInput(
             hint_text="Buraya yazabilirsiniz...",
             size_hint=(1, 0.15), multiline=False, font_size='16sp'
         )
         main_layout.add_widget(self.input_box)
         
-        # 3. Butonlar Paneli (Yan yana)
         button_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.15), spacing=10)
         
         self.btn_send = Button(text="Yazıyı Gönder", background_color=(0.2, 0.6, 1, 1))
@@ -60,7 +56,6 @@ class AsistanApp(App):
         button_layout.add_widget(self.btn_mic)
         main_layout.add_widget(button_layout)
         
-        # Android TTS (Konuşma) Motorunu Arka Planda Başlat
         Clock.schedule_once(lambda dt: self.tts_hazirla(), 1)
         
         return main_layout
@@ -69,7 +64,6 @@ class AsistanApp(App):
         try:
             activity = PythonActivity.mActivity
             self.tts = TextToSpeech(activity, None)
-            # Varsayılan dili Türkçe yapıyoruz
             self.tts.setLanguage(Locale("tr", "TR"))
         except:
             pass
@@ -77,7 +71,6 @@ class AsistanApp(App):
     def konustur(self, metin):
         if self.tts:
             try:
-                # Yapay zekadan gelen cevabı telefona sesli okutuyoruz
                 self.tts.speak(metin, TextToSpeech.QUEUE_FLUSH, None, None)
             except:
                 pass
@@ -85,9 +78,9 @@ class AsistanApp(App):
     def metin_gonder(self, instance):
         soru = self.input_box.text.strip()
         if soru:
-            self.label.text = f"Soru: {soru}\n\nAsistan düşünüyor..."
+            self.label.text = f"Soru: {soru}\n\nJarvis düşünüyor..."
             self.input_box.text = ""
-            threading.Thread(target=self.gemini_sorgula, args=(soru,)).start()
+            threading.Thread(target=self.openai_sorgula, args=(soru,)).start()
 
     def sesi_baslat(self, instance):
         self.label.text = "Dinleniyor... Konuşun..."
@@ -96,36 +89,36 @@ class AsistanApp(App):
             intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-            # Android'in ses tanıma ekranını tetikliyoruz
             activity.startActivityForResult(intent, 100)
-            # NOT: Android sonuç döndürdüğünde Kivy activity_result mekanizmasıyla bunu yakalayabiliriz.
-            # Şimdilik stabilite için arayüz kilitlenmesini bu butonla çözüyoruz.
         except Exception as e:
-            self.label.text = f"Mikrofon başlatılamadı (Sadece Android'de çalışır):\n{str(e)}"
+            self.label.text = f"Mikrofon hatası:\n{str(e)}"
 
-    def gemini_sorgula(self, soru):
+    def openai_sorgula(self, soru):
         try:
-            if self.api_key == "YOUR_GEMINI_API_KEY":
-                Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: Lütfen kodun içine API anahtarını gir."), 0)
+            if self.api_key == "":
+                Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: Lütfen OpenAI API anahtarını girin."), 0)
                 return
 
-            # 2026 güncel ve en kararlı API adresi (Modeller güncellendiği için doğrudan güncel sürüm kullanılır)
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
-            headers = {'Content-Type': 'application/json'}
-            data = {"contents": [{"parts": [{"text": soru}]}]}
+            # OpenAI Resmi API Adresi
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {self.api_key}'
+            }
+            # Hızlı ve ekonomik gpt-4o-mini modelini kullanıyoruz
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": soru}]
+            }
 
-            response = requests.post(url, headers=headers, json=data, timeout=12)
+            response = requests.post(url, headers=headers, json=data, timeout=15)
             
             if response.status_code == 200:
-                cevap = response.json()['candidates'][0]['content']['parts'][0]['text']
+                cevap = response.json()['choices'][0]['message']['content']
                 Clock.schedule_once(lambda dt: self.ui_guncelle(cevap), 0)
                 self.konustur(cevap)
-            elif response.status_code == 404:
-                # Eğer 2.5 modeli de 404 verirse, alternatif olarak bir önceki nesil güncel modele (1.5-flash-8b veya v1 sürümüne) yönlendirelim
-                # Hatanın detayını ekrana basıyoruz ki sorunu tam görelim
-                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata 404: Sunucu bu modeli veya adresi bulamadı.\nHam Yanıt: {response.text[:50]}"), 0)
             else:
-                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata Kodu: {response.status_code}"), 0)
+                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata Kodu: {response.status_code}\nDetay: {response.text[:100]}"), 0)
         except Exception as e:
             Clock.schedule_once(lambda dt: self.ui_guncelle(f"Bağlantı hatası:\n{str(e)}"), 0)
 
