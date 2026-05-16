@@ -24,7 +24,7 @@ except Exception as e:
 class AsistanApp(App):
     def build(self):
         self.tts = None
-        self.api_key = "AIzaSyBi5-oS8jxZJDhZxljhpMVoalWFQ9UxfCw" # <--- KENDİ GEMINI KEY'İNİ BURAYA YAPIŞTIR
+        self.api_key = "AIzaSyDr2D-QSQtDwcaCmzcyC5El5yucqqCOZGQ" # <--- KENDİ GEMINI KEY'İNİ BURAYA YAPIŞTIR
         
         # Ana Dikey Arayüz
         main_layout = BoxLayout(orientation='vertical', padding=15, spacing=15)
