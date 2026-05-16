@@ -109,7 +109,7 @@ class AsistanApp(App):
                 Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: Lütfen kodun içine API anahtarını gir."), 0)
                 return
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={self.api_key}"
             headers = {'Content-Type': 'application/json'}
             data = {"contents": [{"parts": [{"text": soru}]}]}
 
