@@ -39,7 +39,7 @@ class AsistanApp(App):
             # API anahtarın yoksa şimdilik bu haliyle derleyip internet testini doğrulayabilirsin.
             api_key = "YOUR_GEMINI_API_KEY" 
             
-            if api_key == "YOUR_GEMINI_API_KEY":
+            if api_key == "AIzaSyBi5-oS8jxZJDhZxljhpMVoalWFQ9UxfCw":
                 Clock.schedule_once(lambda dt: self.ui_guncelle("İnternet bağlantı altyapısı hazır! Ancak kodun içindeki 'YOUR_GEMINI_API_KEY' alanına gerçek bir API anahtarı girmen gerekiyor."), 0)
                 return
 
