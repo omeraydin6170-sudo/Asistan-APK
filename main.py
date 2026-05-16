@@ -24,19 +24,7 @@ try:
 except Exception as e:
     print("Android kütüphane yükleme hatası:", e)
 
-# Android TTS Başlatma Dinleyicisi (Hata Çözücü)
 if android_hazir:
-    class OnInitListener(PythonJavaClass):
-        __javainterfaces__ = ['android/speech/tts/TextToSpeech$OnInitListener']
-        
-        def __init__(self, callback):
-            super(OnInitListener, self).__init__()
-            self.callback = callback
-            
-        @java_method('(I)v')
-        def onInit(self, status):
-            self.callback(status)
-
     class RecognitionListener(PythonJavaClass):
         __javainterfaces__ = ['android/speech/RecognitionListener']
         
@@ -69,7 +57,6 @@ if android_hazir:
         @java_method('(ILandroid/os/Bundle;)v')
         def onEvent(self, eventType, params): pass
 
-# Fütüristik Oval ve Kenarlıklı Siber Buton Sınıfı
 class CyberButton(Button):
     def __init__(self, bg_color=(0.0, 0.4, 0.6, 1), border_color=(0.0, 0.8, 1.0, 1), **kwargs):
         super(CyberButton, self).__init__(**kwargs)
@@ -83,14 +70,11 @@ class CyberButton(Button):
     def draw_cyber(self, *args):
         self.canvas.before.clear()
         with self.canvas.before:
-            # İç Dolgu (Yumuşak Oval)
             Color(*self.bg_color)
             RoundedRectangle(pos=self.pos, size=self.size, radius=[25])
-            # Parlayan Dış Çizgisel Kenarlık (Siber Çizgi)
             Color(*self.border_color)
             Line(rounded_rectangle=(self.pos[0], self.pos[1], self.size[0], self.size[1], 25), width=1.5)
 
-# Siber Görünümlü Panel Kartı (Sohbet Ekranı Arka Planı İçin)
 class CyberCard(BoxLayout):
     def __init__(self, **kwargs):
         super(CyberCard, self).__init__(**kwargs)
@@ -99,9 +83,9 @@ class CyberCard(BoxLayout):
     def draw_card(self, *args):
         self.canvas.before.clear()
         with self.canvas.before:
-            Color(0.08, 0.1, 0.15, 0.6) # Yarı şeffaf koyu panel
+            Color(0.08, 0.1, 0.15, 0.6)
             RoundedRectangle(pos=self.pos, size=self.size, radius=[20])
-            Color(0.0, 0.5, 0.7, 0.4) # Hafif parlayan siber çerçeve
+            Color(0.0, 0.5, 0.7, 0.4)
             Line(rounded_rectangle=(self.pos[0], self.pos[1], self.size[0], self.size[1], 20), width=1.2)
 
 class AsistanApp(App):
@@ -114,24 +98,21 @@ class AsistanApp(App):
             {"role": "system", "content": "Sen Poco C65 telefonunda çalışan, çok samimi, zeki, esprili ve Türkçe konuşan bir sesli asistansın. Adın Kronos. Cümlelerini bir sesli asistan gibi kısa, net ve akıcı tut."}
         ]
         
-        # Ana Arayüz (Derin Uzay Siyahı Arka Plan)
         main_layout = BoxLayout(orientation='vertical', padding=22, spacing=18)
         with main_layout.canvas.before:
             Color(0.03, 0.04, 0.06, 1) 
             RoundedRectangle(pos=(0,0), size=(5000, 5000))
             
-        # KRONOS Dijital Başlık
         title_label = Label(
             text="K R O N O S // V1.0", font_size='22sp', bold=True,
             color=(0.0, 0.8, 1.0, 1), size_hint=(1, 0.08)
         )
         main_layout.add_widget(title_label)
         
-        # Yenilenen Şık Sohbet Kartı Paneli
         chat_panel = CyberCard(orientation='vertical', padding=15)
         scroll = ScrollView()
         self.label = Label(
-            text="KRONOS Yapay Zeka Sistemi Çekirdeği Aktif.\nSözlerinizi bekliyorum...",
+            text="Kronos Çekirdeği Aktif.\nSesli komutlarınızı bekliyorum.",
             font_size='16sp', color=(0.85, 0.95, 1.0, 1),
             halign='center', valign='middle', size_hint_y=None
         )
@@ -139,10 +120,8 @@ class AsistanApp(App):
         self.label.bind(texture_size=lambda s, t: setattr(self.label, 'height', t[1]))
         scroll.add_widget(self.label)
         chat_panel.add_widget(scroll)
-        
         main_layout.add_widget(chat_panel)
         
-        # Modern Giriş Kutusu (Gölge ve Köşe Tasarımlı)
         self.input_box = TextInput(
             hint_text="Kronos'a şifreli komut yazın...",
             size_hint=(1, 0.11), multiline=False, font_size='15sp',
@@ -152,7 +131,6 @@ class AsistanApp(App):
         )
         main_layout.add_widget(self.input_box)
         
-        # Kontrol Butonları Alanı
         button_layout = BoxLayout(orientation='horizontal', size_hint=(1, 0.12), spacing=15)
         
         self.btn_send = CyberButton(
@@ -182,9 +160,14 @@ class AsistanApp(App):
         try:
             activity = PythonActivity.mActivity
             
-            # Geri bildirim dinleyicisi ile güvenli TTS
-            self.tts_listener = OnInitListener(self.tts_hazir_oldu)
-            self.tts = TextToSpeech(activity, self.tts_listener)
+            # ÇÖZÜM: Sorun çıkaran dinleyiciyi tamamen boş (None) geçip bypass ediyoruz
+            self.tts = TextToSpeech(activity, None)
+            
+            # Dil ayarını dinleyici beklemeden doğrudan yapıyoruz
+            try:
+                self.tts.setLanguage(Locale("tr", "TR"))
+            except:
+                pass
             
             audio_manager = activity.getSystemService(Context.AUDIO_SERVICE)
             max_volume = audio_manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -193,10 +176,6 @@ class AsistanApp(App):
             activity.runOnUiThread(threading.Thread(target=self.recognizer_kur).start)
         except Exception as e:
             self.label.text = f"Sistem Hatası: {e}"
-
-    def tts_hazir_oldu(self, status):
-        if status == 0 and self.tts:
-            self.tts.setLanguage(Locale("tr", "TR"))
 
     def recognizer_kur(self):
         activity = PythonActivity.mActivity
@@ -229,7 +208,7 @@ class AsistanApp(App):
                 
                 PythonActivity.mActivity.runOnUiThread(lambda: self.speech_recognizer.startListening(intent))
             except Exception as e:
-                self.label.text = f"Mikrofon bağlantı hatası:\n{str(e)}"
+                self.label.text = f"Mikrofon hatası:\n{str(e)}"
 
     def ses_sonucu_geldi(self, sonuc):
         if sonuc.startswith("HATA_KODU_"):
@@ -259,7 +238,7 @@ class AsistanApp(App):
                 Clock.schedule_once(lambda dt: self.ui_guncelle(cevap), 0)
                 self.konustur(cevap)
             else:
-                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata Kodu: {response.status_code}"), 0)
+                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata: {response.status_code}"), 0)
         except Exception as e:
             Clock.schedule_once(lambda dt: self.ui_guncelle(f"Bağlantı koptu:\n{str(e)}"), 0)
 
