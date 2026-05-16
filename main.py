@@ -23,14 +23,14 @@ except Exception as e:
 class AsistanApp(App):
     def build(self):
         self.tts = None
-        # OpenAI'dan aldığın "sk-..." ile başlayan anahtarı BURAYA yapıştır
-        self.api_key = "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" 
+        # Groq'tan aldığın "gsk_..." ile başlayan anahtarı BURAYA yapıştır
+        self.api_key = "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" 
         
         main_layout = BoxLayout(orientation='vertical', padding=15, spacing=15)
         
         scroll = ScrollView(size_hint=(1, 0.5))
         self.label = Label(
-            text="Poco C65 Jarvis (ChatGPT) Hazır!\nYazın veya mikrofon butonuna basıp konuşun.",
+            text="Poco C65 Jarvis (Llama 3) Hazır!\nYazın veya mikrofon butonuna basıp konuşun.",
             font_size='16sp', halign='center', valign='middle', size_hint_y=None
         )
         self.label.bind(size=lambda s, w: setattr(self.label, 'text_size', (w[0] - 20, None)))
@@ -80,7 +80,7 @@ class AsistanApp(App):
         if soru:
             self.label.text = f"Soru: {soru}\n\nJarvis düşünüyor..."
             self.input_box.text = ""
-            threading.Thread(target=self.openai_sorgula, args=(soru,)).start()
+            threading.Thread(target=self.groq_sorgula, args=(soru,)).start()
 
     def sesi_baslat(self, instance):
         self.label.text = "Dinleniyor... Konuşun..."
@@ -93,21 +93,21 @@ class AsistanApp(App):
         except Exception as e:
             self.label.text = f"Mikrofon hatası:\n{str(e)}"
 
-    def openai_sorgula(self, soru):
+    def groq_sorgula(self, soru):
         try:
-            if self.api_key == "":
-                Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: Lütfen OpenAI API anahtarını girin."), 0)
+            if self.api_key == "YOUR_GROQ_API_KEY":
+                Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: Lütfen Groq API anahtarını girin."), 0)
                 return
 
-            # OpenAI Resmi API Adresi
-            url = "https://api.openai.com/v1/chat/completions"
+            # Groq Resmi API Adresi
+            url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {
                 'Content-Type': 'application/json',
                 'Authorization': f'Bearer {self.api_key}'
             }
-            # Hızlı ve ekonomik gpt-4o-mini modelini kullanıyoruz
+            # Meta'nın süper hızlı llama3-8b modelini bağlıyoruz
             data = {
-                "model": "gpt-4o-mini",
+                "model": "llama3-8b-8192",
                 "messages": [{"role": "user", "content": soru}]
             }
 
