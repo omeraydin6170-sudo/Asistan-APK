@@ -12,6 +12,12 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Java 17 Kurulumu (Derleme Kilidi)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: GitHub Android Kalıntılarını Temizle
         run: |
           unset ANDROID_NDK
@@ -33,7 +39,6 @@ jobs:
           export ANDROID_NDK_HOME=""
           export ANDROID_NDK_ROOT=""
           export ANDROID_NDK_LATEST_HOME=""
-          # Temizlik komutunu sildik, doğrudan güvenli derlemeyi başlatıyoruz:
           yes | buildozer android debug
         
       - name: APK'yı Teslim Et
