@@ -105,9 +105,9 @@ class AsistanApp(App):
                 'Content-Type': 'application/json',
                 'Authorization': f'Bearer {self.api_key}'
             }
-# En güncel kararlı model
+# Bilgisayarda başarıyla çalışan kesin model ismi
             data = {
-                "model": "llama3-70b-8192",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": soru}]
             }
 
