@@ -11,20 +11,18 @@ import threading
 android_hazir = False
 try:
     from jnius import autoclass, PythonJavaClass, java_method
-    from android import activity as android_activity
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
     Context = autoclass('android.content.Context')
     Intent = autoclass('android.content.Intent')
     RecognizerIntent = autoclass('android.speech.RecognizerIntent')
     SpeechRecognizer = autoclass('android.speech.SpeechRecognizer')
-    Bundle = autoclass('android.os.Bundle')
     TextToSpeech = autoclass('android.speech.tts.TextToSpeech')
     Locale = autoclass('java.util.Locale')
+    AudioManager = autoclass('android.media.AudioManager')
     android_hazir = True
 except Exception as e:
     print("Android kütüphane yükleme hatası:", e)
 
-# Android Ses Dinleme Olaylarını Yakalayan Özel Sınıf
 if android_hazir:
     class RecognitionListener(PythonJavaClass):
         __javainterfaces__ = ['android/speech/RecognitionListener']
@@ -62,19 +60,17 @@ class AsistanApp(App):
     def build(self):
         self.tts = None
         self.speech_recognizer = None
-        # Groq API Anahtarın doğrudan buraya gömüldü
         self.api_key = "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" 
         
-        # SOHBET HAFIZASI
         self.gecmis = [
-            {"role": "system", "content": "Sen Poco C65 telefonunda çalışan, samimi, zeki ve Türkçe konuşan bir asistansın. Adın Jarvis. Geçmişi tamamen hatırlarsın."}
+            {"role": "system", "content": "Sen Poco C65 telefonunda çalışan, çok samimi, zeki, esprili ve Türkçe konuşan bir sesli asistansın. Adın Jarvis. Cümlelerini bir sesli asistan gibi kısa, net ve akıcı tut ki seni dinlemek keyifli olsun. Uzun paragraflar yazma."}
         ]
         
         main_layout = BoxLayout(orientation='vertical', padding=15, spacing=15)
         
         scroll = ScrollView(size_hint=(1, 0.5))
         self.label = Label(
-            text="Jarvis Sistemi Aktif!\nHafıza ve ses motoru hazır, konuşabilirsiniz.",
+            text="Jarvis Sesli Sistemi Aktif!\nButona basın, konuşun ve beni dinleyin.",
             font_size='16sp', halign='center', valign='middle', size_hint_y=None
         )
         self.label.bind(size=lambda s, w: setattr(self.label, 'text_size', (w[0] - 20, None)))
@@ -83,7 +79,7 @@ class AsistanApp(App):
         main_layout.add_widget(scroll)
         
         self.input_box = TextInput(
-            hint_text="Buraya yazabilirsiniz...",
+            hint_text="Buraya da yazabilirsiniz...",
             size_hint=(1, 0.15), multiline=False, font_size='16sp'
         )
         main_layout.add_widget(self.input_box)
@@ -93,7 +89,7 @@ class AsistanApp(App):
         self.btn_send = Button(text="Yazıyı Gönder", background_color=(0.2, 0.6, 1, 1))
         self.btn_send.bind(on_press=self.metin_gonder)
         
-        self.btn_mic = Button(text="🎙 Konuş", background_color=(0.2, 0.8, 0.2, 1))
+        self.btn_mic = Button(text="🎙 KONUŞ VE DİNLE", background_color=(0.2, 0.8, 0.2, 1))
         self.btn_mic.bind(on_press=self.sesi_baslat)
         
         button_layout.add_widget(self.btn_send)
@@ -108,14 +104,16 @@ class AsistanApp(App):
     def sistemleri_hazirla(self):
         try:
             activity = PythonActivity.mActivity
-            # TTS Hazırlığı
             self.tts = TextToSpeech(activity, None)
             self.tts.setLanguage(Locale("tr", "TR"))
             
-            # Kilitlenmeyen Özel Ses Tanıma Motoru Hazırlığı
+            audio_manager = activity.getSystemService(Context.AUDIO_SERVICE)
+            max_volume = audio_manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            audio_manager.setStreamVolume(AudioManager.STREAM_MUSIC, int(max_volume * 0.8), 0)
+
             activity.runOnUiThread(threading.Thread(target=self.recognizer_kur).start)
         except Exception as e:
-            self.label.text = f"Sistem başlatma hatası: {e}"
+            self.label.text = f"Ses motoru hazır değil: {e}"
 
     def recognizer_kur(self):
         activity = PythonActivity.mActivity
@@ -127,8 +125,8 @@ class AsistanApp(App):
         if android_hazir and self.tts:
             try:
                 self.tts.speak(metin, TextToSpeech.QUEUE_FLUSH, None, None)
-            except:
-                pass
+            except Exception as e:
+                print("Konuşma hatası:", e)
 
     def metin_gonder(self, instance):
         soru = self.input_box.text.strip()
@@ -146,16 +144,13 @@ class AsistanApp(App):
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
                 
-                # Android UI Thread üzerinde güvenle sesi dinletiyoruz
                 PythonActivity.mActivity.runOnUiThread(lambda: self.speech_recognizer.startListening(intent))
             except Exception as e:
-                self.label.text = f"Mikrofon tetikleme hatası:\n{str(e)}"
-        else:
-            self.label.text = "Ses sistemi telefonda hazır değil."
+                self.label.text = f"Mikrofon hatası:\n{str(e)}"
 
     def ses_sonucu_geldi(self, sonuc):
         if sonuc.startswith("HATA_KODU_"):
-            self.label.text = f"Ses alınamadı veya sessiz kalındı. (Hata: {sonuc})"
+            self.label.text = "Sesi tam alamadım, tekrar basıp konuşur musun?"
         else:
             self.label.text = f"Soru (Sesli): {sonuc}\n\nJarvis düşünüyor..."
             self.gecmis.append({"role": "user", "content": sonuc})
@@ -163,10 +158,6 @@ class AsistanApp(App):
 
     def groq_sorgula(self):
         try:
-            if not self.api_key:
-                Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: API anahtarı boş bırakılamaz."), 0)
-                return
-
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {
                 'Content-Type': 'application/json',
@@ -185,9 +176,9 @@ class AsistanApp(App):
                 Clock.schedule_once(lambda dt: self.ui_guncelle(cevap), 0)
                 self.konustur(cevap)
             else:
-                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata Kodu: {response.status_code}\nDetay: {response.text[:100]}"), 0)
+                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata: {response.status_code}"), 0)
         except Exception as e:
-            Clock.schedule_once(lambda dt: self.ui_guncelle(f"Bağlantı hatası:\n{str(e)}"), 0)
+            Clock.schedule_once(lambda dt: self.ui_guncelle(f"Bağlantı kesildi:\n{str(e)}"), 0)
 
     def ui_guncelle(self, metin):
         self.label.text = metin
