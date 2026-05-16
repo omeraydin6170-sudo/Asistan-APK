@@ -15,4 +15,4 @@ android.ndk = 25b
 android.archs = arm64-v8a
 android.allow_backup = True
 # Telefonun internete bağlanmasını sağlayan sihirli satır:
-android.permissions = INTERNET
+android.permissions = INTERNET, RECORD_AUDIO, MODIFY_AUDIO_SETTINGS
