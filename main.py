@@ -10,28 +10,71 @@ import threading
 
 android_hazir = False
 try:
-    from jnius import autoclass, activity
+    from jnius import autoclass, PythonJavaClass, java_method
+    from android import activity as android_activity
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
     Context = autoclass('android.content.Context')
     Intent = autoclass('android.content.Intent')
     RecognizerIntent = autoclass('android.speech.RecognizerIntent')
+    SpeechRecognizer = autoclass('android.speech.SpeechRecognizer')
+    Bundle = autoclass('android.os.Bundle')
     TextToSpeech = autoclass('android.speech.tts.TextToSpeech')
     Locale = autoclass('java.util.Locale')
     android_hazir = True
 except Exception as e:
-    print("Android kütüphaneleri yüklenemedi, simüle ediliyor.")
+    print("Android kütüphane yükleme hatası:", e)
+
+# Android Ses Dinleme Olaylarını Yakalayan Özel Sınıf
+if android_hazir:
+    class RecognitionListener(PythonJavaClass):
+        __javainterfaces__ = ['android/speech/RecognitionListener']
+        
+        def __init__(self, callback):
+            super(RecognitionListener, self).__init__()
+            self.callback = callback
+            
+        @java_method('([Ljava/lang/String;)v')
+        def onResults(self, results):
+            matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            if matches and matches.size() > 0:
+                self.callback(str(matches.get(0)))
+                
+        @java_method('(I)v')
+        def onError(self, error):
+            self.callback(f"HATA_KODU_{error}")
+            
+        @java_method('(Landroid/os/Bundle;)v')
+        def onReadyForSpeech(self, params): pass
+        @java_method('()v')
+        def onBeginningOfSpeech(self): pass
+        @java_method('([B)v')
+        def onRmsChanged(self, rmsdB): pass
+        @java_method('()v')
+        def onBufferReceived(self): pass
+        @java_method('()v')
+        def onEndOfSpeech(self): pass
+        @java_method('(ILandroid/os/Bundle;)v')
+        def onPartialResults(self, partialResults): pass
+        @java_method('(ILandroid/os/Bundle;)v')
+        def onEvent(self, eventType, params): pass
 
 class AsistanApp(App):
     def build(self):
         self.tts = None
-        # Çalışan gsk_... anahtarını BURAYA yapıştır
+        self.speech_recognizer = None
+        # Groq API Anahtarın doğrudan buraya gömüldü
         self.api_key = "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" 
+        
+        # SOHBET HAFIZASI
+        self.gecmis = [
+            {"role": "system", "content": "Sen Poco C65 telefonunda çalışan, samimi, zeki ve Türkçe konuşan bir asistansın. Adın Jarvis. Geçmişi tamamen hatırlarsın."}
+        ]
         
         main_layout = BoxLayout(orientation='vertical', padding=15, spacing=15)
         
         scroll = ScrollView(size_hint=(1, 0.5))
         self.label = Label(
-            text="Poco C65 Jarvis Hazır!\nYazın veya mikrofon butonuna basıp konuşun.",
+            text="Jarvis Sistemi Aktif!\nHafıza ve ses motoru hazır, konuşabilirsiniz.",
             font_size='16sp', halign='center', valign='middle', size_hint_y=None
         )
         self.label.bind(size=lambda s, w: setattr(self.label, 'text_size', (w[0] - 20, None)))
@@ -58,20 +101,27 @@ class AsistanApp(App):
         main_layout.add_widget(button_layout)
         
         if android_hazir:
-            # Android'in ses sonucunu dinleyen mekanizmayı bağlıyoruz
-            activity.bind(on_activity_result=self.ses_sonucunu_yakala)
-            Clock.schedule_once(lambda dt: self.tts_hazirla(), 1)
+            Clock.schedule_once(lambda dt: self.sistemleri_hazirla(), 1)
         
         return main_layout
 
-    def tts_hazirla(self):
-        if android_hazir:
-            try:
-                current_activity = PythonActivity.mActivity
-                self.tts = TextToSpeech(current_activity, None)
-                self.tts.setLanguage(Locale("tr", "TR"))
-            except:
-                pass
+    def sistemleri_hazirla(self):
+        try:
+            activity = PythonActivity.mActivity
+            # TTS Hazırlığı
+            self.tts = TextToSpeech(activity, None)
+            self.tts.setLanguage(Locale("tr", "TR"))
+            
+            # Kilitlenmeyen Özel Ses Tanıma Motoru Hazırlığı
+            activity.runOnUiThread(threading.Thread(target=self.recognizer_kur).start)
+        except Exception as e:
+            self.label.text = f"Sistem başlatma hatası: {e}"
+
+    def recognizer_kur(self):
+        activity = PythonActivity.mActivity
+        self.speech_recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
+        self.listener = RecognitionListener(self.ses_sonucu_geldi)
+        self.speech_recognizer.setRecognitionListener(self.listener)
 
     def konustur(self, metin):
         if android_hazir and self.tts:
@@ -85,43 +135,36 @@ class AsistanApp(App):
         if soru:
             self.label.text = f"Soru: {soru}\n\nJarvis düşünüyor..."
             self.input_box.text = ""
-            threading.Thread(target=self.groq_sorgula, args=(soru,)).start()
+            self.gecmis.append({"role": "user", "content": soru})
+            threading.Thread(target=self.groq_sorgula).start()
 
     def sesi_baslat(self, instance):
-        if android_hazir:
+        if android_hazir and self.speech_recognizer:
             self.label.text = "Dinleniyor... Konuşun..."
             try:
-                current_activity = PythonActivity.mActivity
                 intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                # 100 istek koduyla ses ekranını açıyoruz
-                current_activity.startActivityForResult(intent, 100)
+                
+                # Android UI Thread üzerinde güvenle sesi dinletiyoruz
+                PythonActivity.mActivity.runOnUiThread(lambda: self.speech_recognizer.startListening(intent))
             except Exception as e:
-                self.label.text = f"Mikrofon başlatılamadı:\n{str(e)}"
+                self.label.text = f"Mikrofon tetikleme hatası:\n{str(e)}"
+        else:
+            self.label.text = "Ses sistemi telefonda hazır değil."
 
-    # Google sesi yazıya döküp bitirdiğinde burası tetiklenir
-    def ses_sonucunu_yakala(self, request_code, result_code, intent_data):
-        if request_code == 100:
-            # RESULT_OK genelde -1'dir Android dünyasında
-            try:
-                matches = intent_data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-                if matches and matches.size() > 0:
-                    soru = matches.get(0) # Google'ın anladığı ilk ve en doğru cümleyi alıyoruz
-                    Clock.schedule_once(lambda dt: self.sesli_soruyu_gonder(soru), 0)
-                else:
-                    self.label.text = "Ses anlaşılamadı, lütfen tekrar deneyin."
-            except Exception as e:
-                self.label.text = "Ses verisi alınırken hata oluştu."
+    def ses_sonucu_geldi(self, sonuc):
+        if sonuc.startswith("HATA_KODU_"):
+            self.label.text = f"Ses alınamadı veya sessiz kalındı. (Hata: {sonuc})"
+        else:
+            self.label.text = f"Soru (Sesli): {sonuc}\n\nJarvis düşünüyor..."
+            self.gecmis.append({"role": "user", "content": sonuc})
+            threading.Thread(target=self.groq_sorgula).start()
 
-    def sesli_soruyu_gonder(self, soru):
-        self.label.text = f"Soru (Sesli): {soru}\n\nJarvis düşünüyor..."
-        threading.Thread(target=self.groq_sorgula, args=(soru,)).start()
-
-    def groq_sorgula(self, soru):
+    def groq_sorgula(self):
         try:
-            if self.api_key == "YOUR_GROQ_API_KEY":
-                Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: Lütfen Groq API anahtarını girin."), 0)
+            if not self.api_key:
+                Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: API anahtarı boş bırakılamaz."), 0)
                 return
 
             url = "https://api.groq.com/openai/v1/chat/completions"
@@ -131,13 +174,14 @@ class AsistanApp(App):
             }
             data = {
                 "model": "llama-3.3-70b-versatile",
-                "messages": [{"role": "user", "content": soru}]
+                "messages": self.gecmis
             }
 
             response = requests.post(url, headers=headers, json=data, timeout=15)
             
             if response.status_code == 200:
                 cevap = response.json()['choices'][0]['message']['content']
+                self.gecmis.append({"role": "assistant", "content": cevap})
                 Clock.schedule_once(lambda dt: self.ui_guncelle(cevap), 0)
                 self.konustur(cevap)
             else:
