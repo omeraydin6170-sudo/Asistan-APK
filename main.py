@@ -105,9 +105,9 @@ class AsistanApp(App):
                 'Content-Type': 'application/json',
                 'Authorization': f'Bearer {self.api_key}'
             }
-            # Meta'nın süper hızlı llama3-8b modelini bağlıyoruz
+# En güncel kararlı model
             data = {
-                "model": "llama3-8b-8192",
+                "model": "llama3-70b-8192",
                 "messages": [{"role": "user", "content": soru}]
             }
 
