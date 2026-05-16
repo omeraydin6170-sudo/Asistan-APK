@@ -109,7 +109,8 @@ class AsistanApp(App):
                 Clock.schedule_once(lambda dt: self.ui_guncelle("Hata: Lütfen kodun içine API anahtarını gir."), 0)
                 return
 
-            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+            # 2026 güncel ve en kararlı API adresi (Modeller güncellendiği için doğrudan güncel sürüm kullanılır)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
             headers = {'Content-Type': 'application/json'}
             data = {"contents": [{"parts": [{"text": soru}]}]}
 
@@ -118,8 +119,11 @@ class AsistanApp(App):
             if response.status_code == 200:
                 cevap = response.json()['candidates'][0]['content']['parts'][0]['text']
                 Clock.schedule_once(lambda dt: self.ui_guncelle(cevap), 0)
-                # Ekstra Özellik: Yapay zeka cevabı hem yazacak hem de sesli okuyacak!
                 self.konustur(cevap)
+            elif response.status_code == 404:
+                # Eğer 2.5 modeli de 404 verirse, alternatif olarak bir önceki nesil güncel modele (1.5-flash-8b veya v1 sürümüne) yönlendirelim
+                # Hatanın detayını ekrana basıyoruz ki sorunu tam görelim
+                Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata 404: Sunucu bu modeli veya adresi bulamadı.\nHam Yanıt: {response.text[:50]}"), 0)
             else:
                 Clock.schedule_once(lambda dt: self.ui_guncelle(f"Hata Kodu: {response.status_code}"), 0)
         except Exception as e:
