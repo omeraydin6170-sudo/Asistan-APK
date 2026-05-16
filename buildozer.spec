@@ -14,3 +14,5 @@ android.minapi = 24
 android.ndk = 25b
 android.archs = arm64-v8a
 android.allow_backup = True
+# Telefonun internete bağlanmasını sağlayan sihirli satır:
+android.permissions = INTERNET
